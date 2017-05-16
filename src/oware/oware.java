@@ -6,7 +6,6 @@ import java.awt.Font;
 import java.awt.Toolkit;
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
-
 import javax.swing.Icon;
 import javax.swing.JButton;
 import javax.swing.JFrame;
@@ -33,6 +32,8 @@ public class oware extends javax.swing.JFrame implements ActionListener {
 	JMenuItem menubar_menu_menuitem1;
 	JMenuItem menubar_menu_menuitem2;
 	JMenuItem menubar_menu_menuitem3;
+
+	JButton Hilfe;
 
 	JButton[] Buttons = new JButton[8];
 	JLabel[] Labels = new JLabel[8];
@@ -107,6 +108,11 @@ public class oware extends javax.swing.JFrame implements ActionListener {
 		this.Anleitung.setBorder(new LineBorder(Color.black));
 		this.Anleitung.setHorizontalAlignment(SwingConstants.CENTER);
 		this.Anleitung.setVisible(false);
+
+		this.Hilfe = new JButton("Hilfe");
+		this.getContentPane().add(Hilfe);
+		this.Hilfe.setBounds(291, 370, 218, 50);
+		this.Hilfe.setFont(new Font("Dialog", 10, 20));
 
 		this.Gewonnen = new JLabel("" + gewonnen);
 		this.getContentPane().add(Gewonnen);
@@ -198,6 +204,13 @@ public class oware extends javax.swing.JFrame implements ActionListener {
 	}
 
 	public void initListeners() {
+		this.Hilfe.addActionListener(new ActionListener() {
+
+			public void actionPerformed(ActionEvent arg0) {
+				pc(0);
+			}
+
+		});
 		this.menubar_menu_menuitem1.addActionListener(new ActionListener() {
 
 			public void actionPerformed(ActionEvent k) {
@@ -237,6 +250,7 @@ public class oware extends javax.swing.JFrame implements ActionListener {
 
 				Gewonnen_1.setVisible(false);
 				Gewonnen_2.setVisible(false);
+				Hilfe.setVisible(true);
 
 				Anzeige();
 
@@ -247,6 +261,10 @@ public class oware extends javax.swing.JFrame implements ActionListener {
 
 				Buttonsvisible(true, start);
 				Buttonsvisible(false, 1 - start);
+				
+				if(start == 1){
+					pc(start);
+				}
 
 			}
 		});
@@ -262,6 +280,71 @@ public class oware extends javax.swing.JFrame implements ActionListener {
 
 		}
 
+	}
+
+	void spiel(int Mulde) {
+		if (Steine[Mulde] == 0) {
+			return;
+		}
+
+		boolean Player = Mulde < 4; // wenn Mulde < 4 dann Player = true
+
+		int Aktuell = Mulde; // meine If sind da (R.I.P if)
+		while (Steine[Mulde] > 0) {
+			Aktuell++;
+			Steine[Mulde]--; // -1
+			Steine[Aktuell % 8]++; // % = Modulo
+		}
+
+		Aktuell %= 8;
+		if (Aktuell > 3 && Player) {
+			while ((Aktuell > 3)
+					&& (Steine[Aktuell] == 2 || Steine[Aktuell] == 3)) {
+				gewonnen += Steine[Aktuell];
+				Steine[Aktuell] = 0;
+				Aktuell--;
+			}
+		} else if (Aktuell < 4 && !Player) {
+			while ((Aktuell >= 0)
+					&& (Steine[Aktuell] == 2 || Steine[Aktuell] == 3)) {
+				verloren += Steine[Aktuell];
+				Steine[Aktuell] = 0;
+				Aktuell--;
+			}
+		}
+		Buttonsvisible(true, Player ? 1 : 0);
+		Buttonsvisible(false, Player ? 0 : 1);
+		Anzeige();
+		Verloren.setText("" + verloren);
+		Gewonnen.setText("" + gewonnen);
+
+		boolean fertig = false;
+
+		if (gewonnen > 16
+				|| (Steine[4] + Steine[5] + Steine[6] + Steine[7] == 0)) {
+
+			Buttonsvisible(false, 1);
+			Buttonsvisible(false, 0);
+
+			Gewonnen_1.setVisible(true);
+			Hilfe.setVisible(false);
+
+			fertig = true;
+		}
+		if (verloren > 16
+				|| (Steine[0] + Steine[1] + Steine[2] + Steine[3] == 0)) {
+			Buttonsvisible(false, 1);
+			Buttonsvisible(false, 0);
+
+			Gewonnen_2.setVisible(true);
+			Hilfe.setVisible(false);
+
+			fertig = true;
+		}
+
+		if (!fertig && Player) {
+			pc(1);
+		}
 	}
 
 	void ternary() {
@@ -285,55 +368,101 @@ public class oware extends javax.swing.JFrame implements ActionListener {
 		}
 
 		public void actionPerformed(ActionEvent arg0) {
-			boolean Player = Mulde < 4; // wenn Mulde < 4 dann Player = true
+			spiel(Mulde);
+		}
 
-			int Aktuell = Mulde; // meine If sind da (R.I.P if)
-			while (Steine[Mulde] > 0) {
-				Aktuell++;
-				Steine[Mulde]--; // -1
-				Steine[Aktuell % 8]++; // % = Modulo
+	}
+
+	int bewertungsFunktion(int spieler, int[] aktuelleSteine,
+			int aktuellGewonnen, int aktuellVerloren) {
+		if (spieler == 0) {
+			return aktuellGewonnen - aktuellVerloren;
+		} else {
+			return aktuellVerloren - aktuellGewonnen;
+		}
+	}
+
+	int calcMaxPoints(int spieler, int[] aktuelleSteine, int aktuellGewonnen,
+			int aktuellVerloren, int mulde, int maximaleTiefe) {
+		// System.out.println("calcMaxPoints " + spieler + " " + mulde + " " +
+		// maximaleTiefe);
+
+		int[] steine2 = new int[8];
+		System.arraycopy(aktuelleSteine, 0, steine2, 0, 8);
+
+		int Aktuell = mulde;
+		while (steine2[mulde] > 0) {
+			Aktuell++;
+			steine2[mulde]--; // -1
+			steine2[Aktuell % 8]++; // % = Modulo
+		}
+
+		Aktuell %= 8;
+		if (Aktuell > 3 && spieler == 0) {
+			while ((Aktuell > 3)
+					&& (steine2[Aktuell] == 2 || steine2[Aktuell] == 3)) {
+				aktuellGewonnen += steine2[Aktuell];
+				steine2[Aktuell] = 0;
+				Aktuell--;
 			}
-
-			Aktuell %= 8;
-			if (Aktuell > 3 && Player) {
-				while ((Aktuell > 3)
-						&& (Steine[Aktuell] == 2 || Steine[Aktuell] == 3)) {
-					gewonnen += Steine[Aktuell];
-					Steine[Aktuell] = 0;
-					Aktuell--;
-				}
-			} else if (Aktuell < 4 && !Player) {
-				while ((Aktuell >= 0)
-						&& (Steine[Aktuell] == 2 || Steine[Aktuell] == 3)) {
-					verloren += Steine[Aktuell];
-					Steine[Aktuell] = 0;
-					Aktuell--;
-				}
-			}
-			Buttonsvisible(true, Player ? 1 : 0);
-			Buttonsvisible(false, Player ? 0 : 1);
-			Anzeige();
-			Verloren.setText("" + verloren);
-			Gewonnen.setText("" + gewonnen);
-
-			if (gewonnen > 16
-					|| (Steine[4] + Steine[5] + Steine[6] + Steine[7] == 0)) {
-
-				Buttonsvisible(false, 1);
-				Buttonsvisible(false, 0);
-
-				Gewonnen_1.setVisible(true);
-
-			}
-			if (verloren > 16
-					|| (Steine[0] + Steine[1] + Steine[2] + Steine[3] == 0)) {
-				Buttonsvisible(false, 1);
-				Buttonsvisible(false, 0);
-
-				Gewonnen_2.setVisible(true);
+		} else if (Aktuell < 4 && spieler == 1) {
+			while ((Aktuell >= 0)
+					&& (steine2[Aktuell] == 2 || steine2[Aktuell] == 3)) {
+				aktuellVerloren += steine2[Aktuell];
+				steine2[Aktuell] = 0;
+				Aktuell--;
 			}
 		}
 
+		if (aktuellGewonnen > 16
+				|| (steine2[4] + steine2[5] + steine2[6] + steine2[7] == 0)) {
+			return 9999 * (spieler == 0 ? 1 : -1);
+		}
+		if (aktuellVerloren > 16
+				|| (steine2[0] + steine2[1] + steine2[2] + steine2[3] == 0)) {
+			return 9999 * (spieler == 1 ? 1 : -1);
+		}
+
+		if (maximaleTiefe <= 0) {
+			return bewertungsFunktion(spieler, aktuelleSteine, aktuellGewonnen,
+					aktuellVerloren);
+		}
+
+		int gegner = 1 - spieler;
+		int maxWert = -999999;
+		for (int i = 4 * gegner; i < 4 * gegner + 4; i++) {
+			if (steine2[i] == 0) {
+				continue;
+			}
+			int wert = -calcMaxPoints(gegner, steine2, aktuellGewonnen,
+					aktuellVerloren, i, maximaleTiefe - 1);
+			if (wert > maxWert || (wert == maxWert && Math.random() < 0.5)) {
+				maxWert = wert;
+			}
+		}
+
+		return maxWert;
+	}
+
+	void pc(int spieler) {
+		int maxMulde = spieler * 4;
+		int maxWert = -999999;
+		int[] steine2 = new int[8];
+		System.arraycopy(Steine, 0, steine2, 0, 8);
+		for (int i = 4 * spieler; i < 4 * spieler + 4; i++) {
+			if (steine2[i] == 0) {
+				continue;
+			}
+			int wert = calcMaxPoints(spieler, steine2, gewonnen, verloren, i, 10);
+			System.out.println("Versuche Mulde " + i + " mit Wert " + wert
+					+ ".");
+			if (wert > maxWert || (wert == maxWert && Math.random() < 0.5)) {
+				maxWert = wert;
+				maxMulde = i;
+			}
+		}
+		System.out.println("Spiele Mulde " + maxMulde);
+		spiel(maxMulde);
 	}
 
 	public static void main(String[] args) {
@@ -344,4 +473,5 @@ public class oware extends javax.swing.JFrame implements ActionListener {
 	public void actionPerformed(ActionEvent arg0) {
 
 	}
+
 }
